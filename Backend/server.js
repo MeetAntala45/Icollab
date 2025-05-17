@@ -9,10 +9,7 @@ const axios = require("axios");
 require("dotenv").config();
 const User = require("./models/User");
 const TaskList = require("./models/TaskList");
-// const { Server } = require('socket.io');
 const http = require("http");
-const Message = require("./models/Message");
-const nodemailer = require("nodemailer");
 const Task = require("./models/Task");
 const multer = require("multer");
 const path = require("path");
@@ -32,21 +29,17 @@ const connectDB = async () => {
 
 connectDB();
 
-// const server = http.createServer(app);
-// const io = new Server(server, { cors: { origin: '*' } });
-// Add this to your server.js or index.js file
 const socketIo = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
 app.use(
   cors({
-    origin: "http://localhost:3000", // Your React app URL
+    origin: "http://localhost:3000",
     credentials: true,
   })
 );
 
-// Configure Socket.io with CORS
 const io = socketIo(server, {
   cors: {
     origin: "http://localhost:3000",
@@ -54,7 +47,7 @@ const io = socketIo(server, {
     credentials: true,
   },
 });
-// Socket.io connection handling
+
 io.on("connection", (socket) => {
   console.log("New client connected");
 
@@ -1038,85 +1031,6 @@ app.post("/api/tasks", async (req, res) => {
   }
 });
 
-app.get("/api/channels/:workspaceName", async (req, res) => {
-  try {
-    const wname = req.params.workspacename;
-    const wspace = Workspace.find({ name: wname });
-    const channels = await Channel.find({ workspace: wspace._id });
-    res.json(channels);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post("/api/channels", async (req, res) => {
-  try {
-    const { name, workspace, createdBy } = req.body;
-    if (!name || !workspace || !createdBy) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-    const user = await User.findOne({ email: createdBy });
-    console.log(user);
-    const uid = user._id;
-    const wspace = Workspace.find({ name: workspace });
-    console.log(wspace);
-    const wid = wspace._id;
-    const newChannel = new Channel({
-      name: name,
-      workspace: wid,
-      createdBy: uid,
-    });
-    await newChannel.save();
-    res.status(201).json(newChannel);
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// io.on('connection', (socket) => {
-//   // Store user email when they connect
-//   socket.on('register', (email) => {
-//     socket.email = email;
-//     socket.join(email); // Join a room with their email
-//   });
-
-//   // Handle new message
-//   socket.on('sendMessage', async (data) => {
-//     try {
-//       const { content, receiverEmail, senderEmail, messageType = 'text' } = data;
-
-//       // Save message to database
-//       const newMessage = new Message({
-//         content,
-//         sender: senderEmail,
-//         receiver: receiverEmail,
-//         messageType,
-//         isRead: false,
-//       });
-
-//       await newMessage.save();
-
-//       // Emit the message to both sender and receiver
-//       io.to(receiverEmail).emit('newMessage', newMessage);
-//       io.to(senderEmail).emit('newMessage', newMessage);
-//     } catch (error) {
-//       console.error('Error sending message:', error);
-//     }
-//   });
-//   socket.on('markAsRead', async (senderEmail) => {
-//     try {
-//       await Message.updateMany(
-//         { sender: senderEmail, receiver: socket.email, isRead: false },
-//         { isRead: true }
-//       );
-//       io.to(senderEmail).emit('messagesRead', socket.email);
-//     } catch (error) {
-//       console.error('Error marking messages as read:', error);
-//     }
-//   });
-// });
-
 app.post("/api/projects", async (req, res) => {
   try {
     const { repositoryUrl, workspaceId, addedBy } = req.body;
@@ -1303,30 +1217,6 @@ app.patch("/api/projects/:projectId/:type/:itemId/assign", async (req, res) => {
   } catch (error) {
     console.error("Error assigning item:", error);
     res.status(500).json({ message: "Server error" });
-  }
-});
-
-app.get("/api/messages/:userEmail", async (req, res) => {
-  try {
-    const { userEmail } = req.params;
-    const { with: withEmail, limit = 50, page = 1 } = req.query;
-
-    const messages = await Message.find({
-      $or: [
-        { sender: userEmail, receiver: withEmail },
-        { sender: withEmail, receiver: userEmail },
-      ],
-    })
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip((page - 1) * parseInt(limit))
-      .sort({ createdAt: 1 })
-      .lean();
-
-    res.json(messages);
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    res.status(500).json({ message: "Error fetching messages" });
   }
 });
 
@@ -1843,34 +1733,7 @@ app.get("/users/available", async (req, res) => {
   }
 });
 
-io.on("sendMessage", async (data) => {
-  try {
-    const { content, receiverEmail, senderEmail, messageType = "text" } = data;
-
-    const newMessage = new Message({
-      content,
-      sender: senderEmail,
-      receiver: receiverEmail,
-      messageType,
-      isRead: false,
-      createdAt: new Date(),
-    });
-
-    const savedMessage = await newMessage.save();
-    const messageToSend = await Message.findById(savedMessage._id).lean();
-
-    socket.to(receiverEmail).emit("newMessage", messageToSend);
-    socket.emit("newMessage", messageToSend);
-  } catch (error) {
-    console.error("Error sending message:", error);
-  }
-});
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-// server.listen(5001, () => {
-//   console.log('Server running on http://localhost:5001');
-// });
