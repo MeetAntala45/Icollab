@@ -1,31 +1,31 @@
-const mongoose = require('mongoose');
-const express = require('express');
-const cors = require('cors');
+const mongoose = require("mongoose");
+const express = require("express");
+const cors = require("cors");
 const jwt = require("jsonwebtoken");
-require('dotenv').config();
+require("dotenv").config();
 const Workspace = require("./models/WorkSpace");
-const Project = require('./models/Project');
-const axios = require('axios');
-require('dotenv').config();
-const User = require("./models/User")
-const TaskList = require('./models/TaskList');
+const Project = require("./models/Project");
+const axios = require("axios");
+require("dotenv").config();
+const User = require("./models/User");
+const TaskList = require("./models/TaskList");
 // const { Server } = require('socket.io');
-const http = require('http');
-const Message = require('./models/Message');
-const nodemailer = require('nodemailer');
-const Task = require('./models/Task');
+const http = require("http");
+const Message = require("./models/Message");
+const nodemailer = require("nodemailer");
+const Task = require("./models/Task");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const URI = process.env.MONGO_URI || 'mongodb+srv://YashGabani:Yash9182@cluster0.n77u6.mongodb.net/Icollab?retryWrites=true&w=majority&appName=Cluster0';
+const URI = process.env.MONGO_URI;
 
 const connectDB = async () => {
   try {
     await mongoose.connect(URI);
-    console.log('Connected to MongoDB Atlas');
+    console.log("Connected to MongoDB Atlas");
   } catch (error) {
-    console.error('Error connecting to MongoDB:', error.message);
+    console.error("Error connecting to MongoDB:", error.message);
     process.exit(1);
   }
 };
@@ -35,192 +35,211 @@ connectDB();
 // const server = http.createServer(app);
 // const io = new Server(server, { cors: { origin: '*' } });
 // Add this to your server.js or index.js file
-const socketIo = require('socket.io');
+const socketIo = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-app.use(cors({
-  origin: 'http://localhost:3000', // Your React app URL
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:3000", // Your React app URL
+    credentials: true,
+  })
+);
 
 // Configure Socket.io with CORS
 const io = socketIo(server, {
-  cors: { 
-    origin: 'http://localhost:3000',
+  cors: {
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 // Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('New client connected');
-  
+io.on("connection", (socket) => {
+  console.log("New client connected");
+
   // Join a specific channel room
-  socket.on('joinChannel', ({ channelId, workspaceName }) => {
+  socket.on("joinChannel", ({ channelId, workspaceName }) => {
     const roomName = `${workspaceName}-${channelId}`;
     socket.join(roomName);
     console.log(`User joined room: ${roomName}`);
   });
-  
+
   // Leave a channel room
-  socket.on('leaveChannel', ({ channelId, workspaceName }) => {
+  socket.on("leaveChannel", ({ channelId, workspaceName }) => {
     const roomName = `${workspaceName}-${channelId}`;
     socket.leave(roomName);
     console.log(`User left room: ${roomName}`);
   });
-  
+
   // Handle new messages
-  socket.on('sendMessage', async ({ channelId, workspaceName, message }) => {
+  socket.on("sendMessage", async ({ channelId, workspaceName, message }) => {
     try {
       const { senderId, content, senderName } = message;
       const roomName = `${workspaceName}-${channelId}`;
-      
+
       // Find the workspace and channel
       const workspace = await Workspace.findOne({ name: workspaceName });
       if (!workspace) {
-        return socket.emit('error', { message: "Workspace not found" });
+        return socket.emit("error", { message: "Workspace not found" });
       }
-      
+
       const channel = workspace.chat.channels.id(channelId);
       if (!channel) {
-        return socket.emit('error', { message: "Channel not found" });
+        return socket.emit("error", { message: "Channel not found" });
       }
-      
+
       // Find the user
       const user = await User.findOne({ email: senderId });
       if (!user) {
-        return socket.emit('error', { message: "User not found" });
+        return socket.emit("error", { message: "User not found" });
       }
-      
+
       // Create and save the new message
       const newMessage = {
         sender: user._id,
         content,
         timestamp: new Date(),
       };
-      
+
       channel.messages.push(newMessage);
       await workspace.save();
-      
+
       // Get the populated message to broadcast
-      const updatedWorkspace = await Workspace.findOne({ name: workspaceName })
-        .populate({
-          path: 'chat.channels.messages.sender',
-          select: 'name email _id'
-        });
-      
+      const updatedWorkspace = await Workspace.findOne({
+        name: workspaceName,
+      }).populate({
+        path: "chat.channels.messages.sender",
+        select: "name email _id",
+      });
+
       const updatedChannel = updatedWorkspace.chat.channels.id(channelId);
-      const populatedMessage = updatedChannel.messages[updatedChannel.messages.length - 1];
-      
+      const populatedMessage =
+        updatedChannel.messages[updatedChannel.messages.length - 1];
+
       // Broadcast the message to everyone in the channel
-      io.to(roomName).emit('newMessage', populatedMessage);
+      io.to(roomName).emit("newMessage", populatedMessage);
     } catch (error) {
       console.error("Error sending message via socket:", error);
-      socket.emit('error', { message: "Failed to send message" });
+      socket.emit("error", { message: "Failed to send message" });
     }
   });
-  
+
   // Handle typing events
-  socket.on('typing', ({ channelId, workspaceName, userId, isTyping }) => {
+  socket.on("typing", ({ channelId, workspaceName, userId, isTyping }) => {
     console.log(`User Typing Event: ${userId} - Typing: ${isTyping}`);
 
     const roomName = `${workspaceName}-${channelId}`;
     // Broadcast to everyone except the sender
-    socket.to(roomName).emit('userTyping', { userId, isTyping });
+    socket.to(roomName).emit("userTyping", { userId, isTyping });
   });
-  
+
   // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
   });
 });
 
 // Update your API routes for messages
-app.get('/api/workspaces/:workspaceName/channels/:channelId/messages', async (req, res) => {
-  try {
-    const workspace = await Workspace.findOne({ name: req.params.workspaceName })
-      .populate({
-        path: 'chat.channels.messages.sender',
-        select: 'name email _id'
+app.get(
+  "/api/workspaces/:workspaceName/channels/:channelId/messages",
+  async (req, res) => {
+    try {
+      const workspace = await Workspace.findOne({
+        name: req.params.workspaceName,
+      }).populate({
+        path: "chat.channels.messages.sender",
+        select: "name email _id",
       });
 
-    if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const channel = workspace.chat.channels.id(req.params.channelId);
+
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+
+      res.status(200).json(channel.messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to retrieve messages" });
     }
-
-    const channel = workspace.chat.channels.id(req.params.channelId);
-
-    if (!channel) {
-      return res.status(404).json({ message: "Channel not found" });
-    }
-
-    res.status(200).json(channel.messages);
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    res.status(500).json({ message: "Failed to retrieve messages" });
   }
-});
+);
 
 // POST endpoint still needed for non-socket clients or fallback
-app.post('/api/workspaces/:workspaceName/channels/:channelId/messages', async (req, res) => {
-  const { senderId, content } = req.body;
-  
-  if (!senderId || !content) {
-    return res.status(400).json({ message: "Sender ID and message content are required" });
-  }
+app.post(
+  "/api/workspaces/:workspaceName/channels/:channelId/messages",
+  async (req, res) => {
+    const { senderId, content } = req.body;
 
-  try {
-    const workspace = await Workspace.findOne({ name: req.params.workspaceName });
-
-    if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
+    if (!senderId || !content) {
+      return res
+        .status(400)
+        .json({ message: "Sender ID and message content are required" });
     }
 
-    const channel = workspace.chat.channels.id(req.params.channelId);
-
-    if (!channel) {
-      return res.status(404).json({ message: "Channel not found" });
-    }
-
-    const user = await User.findOne({ email: senderId });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const newMessage = {
-      sender: user._id,
-      content,
-      timestamp: new Date(),
-    };
-
-    channel.messages.push(newMessage);
-    await workspace.save();
-    
-    // Get the populated message to return
-    const updatedWorkspace = await Workspace.findOne({ name: req.params.workspaceName })
-      .populate({
-        path: 'chat.channels.messages.sender',
-        select: 'name email _id'
+    try {
+      const workspace = await Workspace.findOne({
+        name: req.params.workspaceName,
       });
-    
-    const updatedChannel = updatedWorkspace.chat.channels.id(req.params.channelId);
-    const populatedMessage = updatedChannel.messages[updatedChannel.messages.length - 1];
 
-    // Emit the new message to all clients in the channel
-    const roomName = `${req.params.workspaceName}-${req.params.channelId}`;
-    io.to(roomName).emit('newMessage', populatedMessage);
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
 
-    res.status(201).json(populatedMessage);
-  } catch (error) {
-    console.error("Error sending message:", error);
-    res.status(500).json({ message: "Failed to send message" });
+      const channel = workspace.chat.channels.id(req.params.channelId);
+
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+
+      const user = await User.findOne({ email: senderId });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const newMessage = {
+        sender: user._id,
+        content,
+        timestamp: new Date(),
+      };
+
+      channel.messages.push(newMessage);
+      await workspace.save();
+
+      // Get the populated message to return
+      const updatedWorkspace = await Workspace.findOne({
+        name: req.params.workspaceName,
+      }).populate({
+        path: "chat.channels.messages.sender",
+        select: "name email _id",
+      });
+
+      const updatedChannel = updatedWorkspace.chat.channels.id(
+        req.params.channelId
+      );
+      const populatedMessage =
+        updatedChannel.messages[updatedChannel.messages.length - 1];
+
+      // Emit the new message to all clients in the channel
+      const roomName = `${req.params.workspaceName}-${req.params.channelId}`;
+      io.to(roomName).emit("newMessage", populatedMessage);
+
+      res.status(201).json(populatedMessage);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
   }
-});
+);
 
 // Update your server.listen to use the http server instead of app
-const port =  5001;
+const port = 5001;
 server.listen(port, () => {
   console.log(`Server running on port ${PORT}`);
 });
@@ -228,35 +247,43 @@ app.use(cors());
 app.use(express.json());
 
 // Test route for checking server status
-app.get('/', (req, res) => {
-  res.send('MongoDB Atlas Connection Successful!');
+app.get("/", (req, res) => {
+  res.send("MongoDB Atlas Connection Successful!");
 });
 
 // User Signup Route
-app.post('/api/signup', async (req, res) => {
+app.post("/api/signup", async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
 
   if (!firstName || !lastName || !email || !password) {
-    return res.status(400).json({ message: 'All fields are required' });
+    return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already exists' });
+      return res.status(400).json({ message: "Email already exists" });
     }
 
-    const newUser = new User({ firstName, lastName, email, password, authType: 'local' });
+    const newUser = new User({
+      firstName,
+      lastName,
+      email,
+      password,
+      authType: "local",
+    });
     await newUser.save();
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
-      process.env.JWT_SECRET || "yash1234",
+      process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
-    res.status(201).json({ message: 'User created successfully', user: newUser });
+    res
+      .status(201)
+      .json({ message: "User created successfully", user: newUser });
   } catch (error) {
-    console.error('Error creating user:', error.message);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error creating user:", error.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -274,9 +301,10 @@ app.post("/api/login", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.authType !== 'local') {
+    if (user.authType !== "local") {
       return res.status(400).json({
-        message: "This email is registered with Google. Please use Google Sign In."
+        message:
+          "This email is registered with Google. Please use Google Sign In.",
       });
     }
 
@@ -307,10 +335,10 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.get('/api/current-user', async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1]; // Get the token from the Authorization header
+app.get("/api/current-user", async (req, res) => {
+  const token = req.headers["authorization"]?.split(" ")[1]; // Get the token from the Authorization header
   if (!token) {
-    return res.status(403).json({ message: 'No token provided' });
+    return res.status(403).json({ message: "No token provided" });
   }
 
   try {
@@ -318,24 +346,24 @@ app.get('/api/current-user', async (req, res) => {
     const user = await User.findById(decoded.id); // Find the user based on the decoded user ID
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.json({ email: user.email }); // Send the user's email back
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.status(500).json({ message: 'Failed to fetch user data' });
+    console.error("Error fetching user data:", error);
+    res.status(500).json({ message: "Failed to fetch user data" });
   }
 });
 
 // Get all users (for member selection)
-app.get('/api/users', async (req, res) => {
+app.get("/api/users", async (req, res) => {
   try {
-    const users = await User.find({}, 'email _id');
+    const users = await User.find({}, "email _id");
     res.json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({ message: 'Failed to fetch users' });
+    console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 });
 
@@ -350,7 +378,9 @@ app.get("/api/users/:id", async (req, res) => {
     res.status(200).json(user);
   } catch (error) {
     console.error("Error fetching user by ID:", error);
-    res.status(500).json({ message: "Failed to fetch user", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch user", error: error.message });
   }
 });
 // Create a new profile API that returns both user details and workspaces
@@ -363,13 +393,17 @@ app.get("/api/profile", async (req, res) => {
 
   try {
     // Fetch user details
-    const user = await User.findOne({ email }).select("email firstName lastName role phone"); // Adjust fields as needed
+    const user = await User.findOne({ email }).select(
+      "email firstName lastName role phone"
+    ); // Adjust fields as needed
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Fetch workspaces created by the user
-    const workspaces = await Workspace.find({ createdBy: user._id }).select("name description");
+    const workspaces = await Workspace.find({ createdBy: user._id }).select(
+      "name description"
+    );
     if (!workspaces) {
       return res.status(404).json({ message: "No workspaces found" });
     }
@@ -378,21 +412,24 @@ app.get("/api/profile", async (req, res) => {
     res.status(200).json({ user, workspaces });
   } catch (error) {
     console.error("Error fetching profile:", error);
-    res.status(500).json({ message: "Failed to fetch profile", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch profile", error: error.message });
   }
 });
 
 // Google Signup Route
-app.post('/api/google-signup', async (req, res) => {
+app.post("/api/google-signup", async (req, res) => {
   const { email, firstName, lastName, password, googleId } = req.body;
 
   try {
     let user = await User.findOne({ email });
 
     if (user) {
-      if (user.authType === 'local') {
+      if (user.authType === "local") {
         return res.status(400).json({
-          message: 'Email already exists with password login. Please use regular login.'
+          message:
+            "Email already exists with password login. Please use regular login.",
         });
       }
 
@@ -410,7 +447,7 @@ app.post('/api/google-signup', async (req, res) => {
       email,
       password,
       googleId,
-      authType: 'google'
+      authType: "google",
     });
     await user.save();
 
@@ -421,22 +458,22 @@ app.post('/api/google-signup', async (req, res) => {
     );
 
     res.status(201).json({
-      message: 'User created successfully',
+      message: "User created successfully",
       user: {
         id: user._id,
         email: user.email,
         firstName: user.firstName,
-        lastName: user.lastName
-      }
+        lastName: user.lastName,
+      },
     });
   } catch (error) {
-    console.error('Error during Google signup:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error during Google signup:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
 // Google Login Route
-app.post('/api/google-login', async (req, res) => {
+app.post("/api/google-login", async (req, res) => {
   const { email, googleId } = req.body;
 
   try {
@@ -444,18 +481,19 @@ app.post('/api/google-login', async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
-        message: 'User not found. Please sign up first.'
+        message: "User not found. Please sign up first.",
       });
     }
 
-    if (user.authType !== 'google') {
+    if (user.authType !== "google") {
       return res.status(400).json({
-        message: 'This email is registered with password login. Please use regular login.'
+        message:
+          "This email is registered with password login. Please use regular login.",
       });
     }
 
     if (user.googleId !== googleId) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const token = jwt.sign(
@@ -470,39 +508,36 @@ app.post('/api/google-login', async (req, res) => {
         id: user._id,
         email: user.email,
         firstName: user.firstName,
-        lastName: user.lastName
-      }
+        lastName: user.lastName,
+      },
     });
   } catch (error) {
-    console.error('Error during Google login:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error during Google login:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
 // Workspace Routes
-app.post('/api/workspaces', async (req, res) => {
-  const {
-    name,
-    description,
-    members,
-    createdBy
-  } = req.body;
+app.post("/api/workspaces", async (req, res) => {
+  const { name, description, members, createdBy } = req.body;
 
   if (!name || !description || !createdBy) {
-    return res.status(400).json({ message: 'Name, description, and createdBy are required' });
+    return res
+      .status(400)
+      .json({ message: "Name, description, and createdBy are required" });
   }
 
   try {
     // Find the creating user
     const user = await User.findOne({ email: createdBy });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Process members: Find all users by their emails and get their ObjectIds
     let processedMembers = [];
     if (members && members.length > 0) {
-      const memberEmails = members.map(member => member.userId);
+      const memberEmails = members.map((member) => member.userId);
       const memberUsers = await User.find({ email: { $in: memberEmails } });
 
       const emailToUserMap = memberUsers.reduce((map, user) => {
@@ -510,7 +545,7 @@ app.post('/api/workspaces', async (req, res) => {
         return map;
       }, {});
 
-      processedMembers = members.map(member => {
+      processedMembers = members.map((member) => {
         const userId = emailToUserMap[member.userId];
         if (!userId) {
           throw new Error(`User not found with email: ${member.userId}`);
@@ -532,8 +567,8 @@ app.post('/api/workspaces', async (req, res) => {
           {
             name: "default",
             members: [user._id], // Add creator to default channel
-            messages: []
-          }
+            messages: [],
+          },
         ],
       },
       notifications: [],
@@ -543,13 +578,15 @@ app.post('/api/workspaces', async (req, res) => {
 
     // Populate the response with user details for members
     const populatedWorkspace = await Workspace.findById(savedWorkspace._id)
-      .populate('createdBy', 'email name')
-      .populate('members.userId', 'email name');
+      .populate("createdBy", "email name")
+      .populate("members.userId", "email name");
 
     res.status(201).json(populatedWorkspace);
   } catch (error) {
-    console.error('Error creating workspace:', error);
-    res.status(500).json({ message: 'Error creating workspace', error: error.message });
+    console.error("Error creating workspace:", error);
+    res
+      .status(500)
+      .json({ message: "Error creating workspace", error: error.message });
   }
 });
 
@@ -568,51 +605,53 @@ app.get("/api/workspaces", async (req, res) => {
 
     // Find workspaces where user is either creator or member
     const workspaces = await Workspace.find({
-      $or: [
-        { createdBy: user._id },
-        { 'members.userId': user._id },
-      ],
+      $or: [{ createdBy: user._id }, { "members.userId": user._id }],
     })
-      .populate('createdBy', 'email name')
-      .populate('members.userId', 'email name');
+      .populate("createdBy", "email name")
+      .populate("members.userId", "email name");
 
     res.status(200).json(workspaces);
   } catch (error) {
-    console.error('Error fetching workspaces:', error);
-    res.status(500).json({ message: 'Failed to fetch workspaces', error: error.message });
+    console.error("Error fetching workspaces:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to fetch workspaces", error: error.message });
   }
 });
-app.get('/api/workspaces/:workspaceName/members', async (req, res) => {
+app.get("/api/workspaces/:workspaceName/members", async (req, res) => {
   try {
-    
-
-    
-    const workspace = await Workspace.findOne({ name: req.params.workspaceName });
+    const workspace = await Workspace.findOne({
+      name: req.params.workspaceName,
+    });
 
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
     }
-    const members = await Promise.all(workspace.members.map(async (member) => {
-      const usera = await User.findById(member.userId);
-      return {
-        _id: usera._id,
-        firstName: usera.firstName,
-        lastName: usera.lastName,
-        email: usera.email,
-        role: usera.role,
-      };
-    }));
-    
+    const members = await Promise.all(
+      workspace.members.map(async (member) => {
+        const usera = await User.findById(member.userId);
+        return {
+          _id: usera._id,
+          firstName: usera.firstName,
+          lastName: usera.lastName,
+          email: usera.email,
+          role: usera.role,
+        };
+      })
+    );
 
     res.json(members);
-  } catch (error) {    
-    console.error('Error fetching workspace members:', error);
-    res.status(500).json({ message: 'Failed to fetch workspace members', error: error.message });
+  } catch (error) {
+    console.error("Error fetching workspace members:", error);
+    res.status(500).json({
+      message: "Failed to fetch workspace members",
+      error: error.message,
+    });
   }
 });
 
 // Get workspace by name
-app.get('/api/workspaces/:workspaceName', async (req, res) => {
+app.get("/api/workspaces/:workspaceName", async (req, res) => {
   try {
     const userId = req.query.userId; // Get logged-in user's email from query params
 
@@ -628,155 +667,193 @@ app.get('/api/workspaces/:workspaceName', async (req, res) => {
     const uid = user._id.toString();
 
     // Find the workspace by name
-    const workspace = await Workspace.findOne({ name: req.params.workspaceName });
+    const workspace = await Workspace.findOne({
+      name: req.params.workspaceName,
+    });
 
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
     }
 
     // Filter channels where the user is a member
-    const filteredChannels = workspace.chat.channels.filter(channel =>
-      channel.members.some(member => member._id.toString() === uid)
+    const filteredChannels = workspace.chat.channels.filter((channel) =>
+      channel.members.some((member) => member._id.toString() === uid)
     );
 
-    res.json({ ...workspace.toObject(), chat: { channels:  workspace.chat.channels } });
+    res.json({
+      ...workspace.toObject(),
+      chat: { channels: workspace.chat.channels },
+    });
   } catch (error) {
     console.error("Error fetching workspace:", error);
     res.status(500).json({ message: "Failed to fetch workspace" });
   }
 });
 
-app.post('/api/workspaces/:workspaceName/channels/:channelId/messages', async (req, res) => {
-  const { senderId, content } = req.body;
-  console.log(senderId, content)
-  if (!senderId || !content) {
-    return res.status(400).json({ message: "Sender ID and message content are required" });
+app.post(
+  "/api/workspaces/:workspaceName/channels/:channelId/messages",
+  async (req, res) => {
+    const { senderId, content } = req.body;
+    console.log(senderId, content);
+    if (!senderId || !content) {
+      return res
+        .status(400)
+        .json({ message: "Sender ID and message content are required" });
+    }
+
+    try {
+      const workspace = await Workspace.findOne({
+        name: req.params.workspaceName,
+      });
+
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const channel = workspace.chat.channels.id(req.params.channelId);
+
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+
+      const user = await User.findOne({ email: senderId });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const newMessage = {
+        sender: user._id,
+        content,
+        timestamp: new Date(),
+      };
+
+      channel.messages.push(newMessage);
+      await workspace.save();
+
+      res.status(201).json(newMessage);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
   }
+);
+const { decode } = require("html-entities"); // install if needed
 
-  try {
-    const workspace = await Workspace.findOne({ name: req.params.workspaceName });
+app.get(
+  "/api/workspaces/:workspaceName/channels/:channelId/summary",
+  async (req, res) => {
+    try {
+      const { workspaceName, channelId } = req.params;
+      const { timeframe = 24 } = req.query; // timeframe in hours
 
-    if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
+      const workspace = await Workspace.findOne({
+        name: decodeURIComponent(workspaceName),
+      }).populate("chat.channels.messages.sender", "name email");
+
+      if (!workspace)
+        return res.status(404).json({ message: "Workspace not found" });
+
+      const channel = workspace.chat.channels.id(channelId);
+      if (!channel)
+        return res.status(404).json({ message: "Channel not found" });
+
+      // Filter messages based on timeframe
+      const now = new Date();
+      const timeframeStart = new Date(
+        now.getTime() - timeframe * 60 * 60 * 1000
+      );
+
+      const recentMessages = channel.messages.filter(
+        (msg) => new Date(msg.timestamp) >= timeframeStart
+      );
+
+      if (recentMessages.length === 0) {
+        return res
+          .status(200)
+          .json({ summary: "No recent messages to summarize." });
+      }
+
+      // Format messages into chat text (as expected by summarizer model)
+      const formattedChat = recentMessages
+        .map((msg) => {
+          const senderName =
+            msg.sender?.name || msg.sender?.email?.split("@")[0] || "User";
+          return `${senderName}: ${msg.content}`;
+        })
+        .join("\n");
+
+      console.log(
+        "Formatted Chat sent to Summarizer Service:",
+        formattedChat.substring(0, 500)
+      ); // optional: print preview
+
+      // Send to Summarizer Service
+      const response = await axios.post("http://localhost:5002/summarize", {
+        chat: formattedChat,
+      });
+
+      if (response.data && response.data.summary) {
+        res.status(200).json({ summary: response.data.summary });
+      } else {
+        res.status(500).json({ message: "Failed to summarize chat" });
+      }
+    } catch (error) {
+      console.error("Error summarizing chat:", error);
+      res
+        .status(500)
+        .json({ message: "Failed to summarize chat", error: error.message });
     }
-
-    const channel = workspace.chat.channels.id(req.params.channelId);
-
-    if (!channel) {
-      return res.status(404).json({ message: "Channel not found" });
-    }
-
-    const user = await User.findOne({ email: senderId });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    
-
-    const newMessage = {
-      sender: user._id,
-      content,
-      timestamp: new Date(),
-    };
-
-    channel.messages.push(newMessage);
-    await workspace.save();
-
-    res.status(201).json(newMessage);
-  } catch (error) {
-    console.error("Error sending message:", error);
-    res.status(500).json({ message: "Failed to send message" });
   }
-});
-const { decode } = require('html-entities'); // install if needed
+);
+app.get(
+  "/api/workspaces/:workspaceName/channels/:channelId/messages",
+  async (req, res) => {
+    try {
+      const workspace = await Workspace.findOne({
+        name: req.params.workspaceName,
+      });
 
-app.get('/api/workspaces/:workspaceName/channels/:channelId/summary', async (req, res) => {
-  try {
-    const { workspaceName, channelId } = req.params;
-    const { timeframe = 24 } = req.query; // timeframe in hours
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
 
-    const workspace = await Workspace.findOne({ name: decodeURIComponent(workspaceName) })
-      .populate('chat.channels.messages.sender', 'name email');
+      const channel = workspace.chat.channels.id(req.params.channelId);
 
-    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
 
-    const channel = workspace.chat.channels.id(channelId);
-    if (!channel) return res.status(404).json({ message: "Channel not found" });
-
-    // Filter messages based on timeframe
-    const now = new Date();
-    const timeframeStart = new Date(now.getTime() - timeframe * 60 * 60 * 1000);
-
-    const recentMessages = channel.messages.filter(msg => new Date(msg.timestamp) >= timeframeStart);
-
-    if (recentMessages.length === 0) {
-      return res.status(200).json({ summary: "No recent messages to summarize." });
+      res.status(200).json(channel.messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to retrieve messages" });
     }
-
-    // Format messages into chat text (as expected by summarizer model)
-    const formattedChat = recentMessages.map((msg) => {
-      const senderName = msg.sender?.name || msg.sender?.email?.split('@')[0] || "User";
-      return `${senderName}: ${msg.content}`;
-    }).join('\n');
-
-    console.log("Formatted Chat sent to Summarizer Service:", formattedChat.substring(0, 500)); // optional: print preview
-
-    // Send to Summarizer Service
-    const response = await axios.post('http://localhost:5002/summarize', {
-      chat: formattedChat
-    });
-
-    if (response.data && response.data.summary) {
-      res.status(200).json({ summary: response.data.summary });
-    } else {
-      res.status(500).json({ message: "Failed to summarize chat" });
-    }
-  } catch (error) {
-    console.error("Error summarizing chat:", error);
-    res.status(500).json({ message: "Failed to summarize chat", error: error.message });
   }
-});
-app.get('/api/workspaces/:workspaceName/channels/:channelId/messages', async (req, res) => {
-  try {
-    const workspace = await Workspace.findOne({ name: req.params.workspaceName });
-
-    if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
-    }
-
-    const channel = workspace.chat.channels.id(req.params.channelId);
-
-    if (!channel) {
-      return res.status(404).json({ message: "Channel not found" });
-    }
-
-    res.status(200).json(channel.messages);
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    res.status(500).json({ message: "Failed to retrieve messages" });
-  }
-});
-
+);
 
 // Create a new channel in a workspace
-app.post('/api/workspaces/:workspaceName/channels', async (req, res) => {
+app.post("/api/workspaces/:workspaceName/channels", async (req, res) => {
   const { name, description, members } = req.body;
 
   if (!name || !description) {
-    return res.status(400).json({ message: 'Name and description are required' });
+    return res
+      .status(400)
+      .json({ message: "Name and description are required" });
   }
 
   try {
-    const workspace = await Workspace.findOne({ name: req.params.workspaceName });
+    const workspace = await Workspace.findOne({
+      name: req.params.workspaceName,
+    });
 
     if (!workspace) {
-      return res.status(404).json({ message: 'Workspace not found' });
+      return res.status(404).json({ message: "Workspace not found" });
     }
 
     // Validate member IDs
     const validMembers = await User.find({ _id: { $in: members } });
-    const memberIds = validMembers.map(user => user._id);
+    const memberIds = validMembers.map((user) => user._id);
 
     const newChannel = {
       name,
@@ -790,50 +867,48 @@ app.post('/api/workspaces/:workspaceName/channels', async (req, res) => {
 
     res.status(201).json(newChannel);
   } catch (error) {
-    console.error('Error creating channel:', error);
-    res.status(500).json({ message: 'Failed to create channel' });
+    console.error("Error creating channel:", error);
+    res.status(500).json({ message: "Failed to create channel" });
   }
 });
 
-
-
-app.get('/api/tasklist/:taskListId', async (req, res) => {
+app.get("/api/tasklist/:taskListId", async (req, res) => {
   try {
     const { taskListId } = req.params;
-    console.log(taskListId)
+    console.log(taskListId);
     // Fetch the TaskList by ID
     const taskList = await TaskList.findById(taskListId);
-    console.log(taskList)
+    console.log(taskList);
     // If not found, return an error
     if (!taskList) {
-      return res.status(404).json({ error: 'TaskList not found' });
+      return res.status(404).json({ error: "TaskList not found" });
     }
 
     // Return the taskList
     res.status(200).json(taskList);
   } catch (error) {
-    console.error('Error fetching task list:', error);
-    res.status(500).json({ error: 'Failed to fetch task list' });
+    console.error("Error fetching task list:", error);
+    res.status(500).json({ error: "Failed to fetch task list" });
   }
 });
 
-app.get('/api/tasklists', async (req, res) => {
+app.get("/api/tasklists", async (req, res) => {
   const { userEmail } = req.query;
-  console.log(userEmail)
+  console.log(userEmail);
   const user = await User.findOne({ email: userEmail });
   try {
     const taskLists = await TaskList.find({ createdBy: user._id });
     res.json(taskLists);
   } catch (error) {
-    console.error('Error fetching task lists:', error);
-    res.status(500).json({ message: 'Failed to fetch task lists' });
+    console.error("Error fetching task lists:", error);
+    res.status(500).json({ message: "Failed to fetch task lists" });
   }
 });
-app.post('/api/tasklists', async (req, res) => {
+app.post("/api/tasklists", async (req, res) => {
   const { title, cards, createdBy } = req.body;
   const create = await User.findOne({ email: createdBy });
   if (!title || !cards || !create) {
-    return res.status(400).json({ message: 'Title and cards are required' });
+    return res.status(400).json({ message: "Title and cards are required" });
   }
   try {
     const newTaskList = new TaskList({
@@ -845,16 +920,18 @@ app.post('/api/tasklists', async (req, res) => {
     const savedList = await newTaskList.save();
     res.status(201).json(savedList);
   } catch (error) {
-    console.error('Error adding new task list:', error);
-    res.status(500).json({ message: 'Failed to add a new task list' });
+    console.error("Error adding new task list:", error);
+    res.status(500).json({ message: "Failed to add a new task list" });
   }
 });
-app.get('/api/task/:taskId', async (req, res) => {
+app.get("/api/task/:taskId", async (req, res) => {
   try {
     const { taskId } = req.params;
 
     // Fetch the task from the database
-    const task = await Task.findById(taskId).populate("createdBy").populate("taskListId");
+    const task = await Task.findById(taskId)
+      .populate("createdBy")
+      .populate("taskListId");
 
     if (!task) {
       return res.status(404).json({ error: "Task not found" });
@@ -867,7 +944,7 @@ app.get('/api/task/:taskId', async (req, res) => {
   }
 });
 
-app.get('/api/tasks', async (req, res) => {
+app.get("/api/tasks", async (req, res) => {
   const { taskListName, userEmail } = req.query;
 
   try {
@@ -875,14 +952,14 @@ app.get('/api/tasks', async (req, res) => {
     const taskList = await TaskList.findOne({ name: taskListName });
 
     if (!taskList) {
-      return res.status(400).json({ error: 'TaskList not found' });
+      return res.status(400).json({ error: "TaskList not found" });
     }
 
     // Step 2: Fetch User by Email
     const user = await User.findOne({ email: userEmail });
 
     if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+      return res.status(400).json({ error: "User not found" });
     }
 
     // Step 3: Extract All Task IDs from the TaskList
@@ -894,19 +971,18 @@ app.get('/api/tasks', async (req, res) => {
 
     // Step 4: Fetch and Filter Tasks in MongoDB Query
     const userTasks = await Task.find({
-      _id: { $in: taskIds }, 
-      createdBy: user._id,  // Ensure filtering happens at the DB level
+      _id: { $in: taskIds },
+      createdBy: user._id, // Ensure filtering happens at the DB level
     });
 
     // Step 5: Return Filtered Tasks
     res.status(200).json(userTasks);
-
   } catch (error) {
-    console.error('Error fetching tasks:', error);
-    res.status(500).json({ error: 'Failed to fetch tasks' });
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({ error: "Failed to fetch tasks" });
   }
 });
-app.post('/api/tasks', async (req, res) => {
+app.post("/api/tasks", async (req, res) => {
   const { title, description, priority, createdBy, Tasklist } = req.body;
 
   try {
@@ -915,24 +991,26 @@ app.post('/api/tasks', async (req, res) => {
     // Step 1: Find User
     const user = await User.findOne({ email: createdBy });
     if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+      return res.status(400).json({ error: "User not found" });
     }
 
     // Step 2: Find TaskList
     const taskList = await TaskList.findOne({ name: Tasklist });
     if (!taskList) {
-      return res.status(400).json({ error: 'TaskList not found' });
+      return res.status(400).json({ error: "TaskList not found" });
     }
 
     // Step 3: Ensure the task with the same title does not exist
     const existingTask = await Task.findOne({
       title,
-      taskListId: taskList._id, 
-      createdBy: user._id, 
+      taskListId: taskList._id,
+      createdBy: user._id,
     });
 
     if (existingTask) {
-      return res.status(400).json({ error: 'A task with this title already exists in this task list' });
+      return res.status(400).json({
+        error: "A task with this title already exists in this task list",
+      });
     }
 
     // Step 4: Create and Save New Task
@@ -955,8 +1033,8 @@ app.post('/api/tasks', async (req, res) => {
 
     res.status(201).json(newTask);
   } catch (error) {
-    console.error('Error creating task:', error);
-    res.status(500).json({ error: 'Failed to create task' });
+    console.error("Error creating task:", error);
+    res.status(500).json({ error: "Failed to create task" });
   }
 });
 
@@ -978,12 +1056,16 @@ app.post("/api/channels", async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
     const user = await User.findOne({ email: createdBy });
-    console.log(user)
+    console.log(user);
     const uid = user._id;
     const wspace = Workspace.find({ name: workspace });
-    console.log(wspace)
+    console.log(wspace);
     const wid = wspace._id;
-    const newChannel = new Channel({ name: name, workspace: wid, createdBy: uid });
+    const newChannel = new Channel({
+      name: name,
+      workspace: wid,
+      createdBy: uid,
+    });
     await newChannel.save();
     res.status(201).json(newChannel);
   } catch (err) {
@@ -991,9 +1073,6 @@ app.post("/api/channels", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-
-
 
 // io.on('connection', (socket) => {
 //   // Store user email when they connect
@@ -1038,57 +1117,63 @@ app.post("/api/channels", async (req, res) => {
 //   });
 // });
 
-app.post('/api/projects', async (req, res) => {
+app.post("/api/projects", async (req, res) => {
   try {
-    const { repositoryUrl ,workspaceId,addedBy} = req.body;
-    console.log(repositoryUrl ,workspaceId,addedBy)
-        // Validate URL format
+    const { repositoryUrl, workspaceId, addedBy } = req.body;
+    console.log(repositoryUrl, workspaceId, addedBy);
+    // Validate URL format
     if (!repositoryUrl.match(/^https:\/\/github\.com\/[^/]+\/[^/]+$/)) {
-      return res.status(400).json({ message: 'Invalid GitHub repository URL' });
+      return res.status(400).json({ message: "Invalid GitHub repository URL" });
     }
-    
+
     // Extract owner and repo name from URL
-    const urlParts = repositoryUrl.split('/');
+    const urlParts = repositoryUrl.split("/");
     const owner = urlParts[urlParts.length - 2];
     const repoName = urlParts[urlParts.length - 1];
-    
+
     // Check if project already exists
     const existingProject = await Project.findOne({ repositoryUrl });
     if (existingProject) {
-      return res.status(400).json({ message: 'Project already exists' });
+      return res.status(400).json({ message: "Project already exists" });
     }
-    
+
     // Fetch repository data from GitHub API
-    const repoResponse = await axios.get(`https://api.github.com/repos/${owner}/${repoName}`);
+    const repoResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repoName}`
+    );
     const repoData = repoResponse.data;
-    
+
     // Fetch pull requests
-    const prResponse = await axios.get(`https://api.github.com/repos/${owner}/${repoName}/pulls?state=all&per_page=100`);
-    const pullRequests = prResponse.data.map(pr => ({
+    const prResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls?state=all&per_page=100`
+    );
+    const pullRequests = prResponse.data.map((pr) => ({
       id: pr.id,
       title: pr.title,
       url: pr.html_url,
-      state: pr.state === 'closed' && pr.merged_at ? 'merged' : pr.state,
+      state: pr.state === "closed" && pr.merged_at ? "merged" : pr.state,
       createdAt: pr.created_at,
       updatedAt: pr.updated_at,
-      repository: repositoryUrl
+      repository: repositoryUrl,
     }));
-    
+
     // Fetch issues
-    const issueResponse = await axios.get(`https://api.github.com/repos/${owner}/${repoName}/issues?state=all&per_page=100`);
+    const issueResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repoName}/issues?state=all&per_page=100`
+    );
     const issues = issueResponse.data
-      .filter(issue => !issue.pull_request) // Filter out pull requests that appear in issues list
-      .map(issue => ({
+      .filter((issue) => !issue.pull_request) // Filter out pull requests that appear in issues list
+      .map((issue) => ({
         id: issue.id,
         title: issue.title,
         url: issue.html_url,
         state: issue.state,
         createdAt: issue.created_at,
         updatedAt: issue.updated_at,
-        repository: repositoryUrl
+        repository: repositoryUrl,
       }));
     const usera = await User.findOne({ email: addedBy });
-    console.log("User", usera)
+    console.log("User", usera);
     // Create new project
     const newProject = new Project({
       repositoryUrl,
@@ -1099,67 +1184,44 @@ app.post('/api/projects', async (req, res) => {
       forks: repoData.forks_count,
       pullRequests,
       issues,
-      workspace:workspaceId ,
-      addedBy: usera._id ,
-      lastSynced: new Date()
+      workspace: workspaceId,
+      addedBy: usera._id,
+      lastSynced: new Date(),
     });
-    
+
     await newProject.save();
-    
+
     res.status(201).json(newProject);
   } catch (error) {
-    console.error('Error adding project:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error adding project:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
 // Get all projects for a workspace
-app.get('/api/workspaces/:workspaceId/projects', async (req, res) => {
+app.get("/api/workspaces/:workspaceId/projects", async (req, res) => {
   try {
     const projects = await Project.find({ workspace: req.params.workspaceId });
     res.json(projects);
   } catch (error) {
-    console.error('Error fetching projects:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error fetching projects:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
-app.get('/api/workspaces/:workspaceId/users', async (req, res) => {
+app.get("/api/workspaces/:workspaceId/users", async (req, res) => {
   try {
     const { workspaceId } = req.params;
 
-    const workspace = await Workspace.findById(workspaceId).populate('members.userId', '-password');
+    const workspace = await Workspace.findById(workspaceId).populate(
+      "members.userId",
+      "-password"
+    );
 
     if (!workspace) {
-      return res.status(404).json({ message: 'Workspace not found' });
+      return res.status(404).json({ message: "Workspace not found" });
     }
 
-    const users = workspace.members.map(member => ({
-      _id: member.userId._id,
-      firstName: member.userId.firstName,
-      lastName: member.userId.lastName,
-      email: member.userId.email,
-      avatar: member.userId.avatar,
-      status: member.userId.status,
-      role: member.role, 
-    }));
-
-    res.status(200).json(users);
-  } catch (error) {
-    console.error('Error fetching workspace users:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-app.get('/api/workspaces/name/:workspaceName/users', async (req, res) => {
-  try {
-    const { workspaceName } = req.params;
-
-    const workspace = await Workspace.findOne({ name: workspaceName }).populate('members.userId', '-password');
-
-    if (!workspace) {
-      return res.status(404).json({ message: 'Workspace not found' });
-    }
-
-    const users = workspace.members.map(member => ({
+    const users = workspace.members.map((member) => ({
       _id: member.userId._id,
       firstName: member.userId.firstName,
       lastName: member.userId.lastName,
@@ -1171,49 +1233,80 @@ app.get('/api/workspaces/name/:workspaceName/users', async (req, res) => {
 
     res.status(200).json(users);
   } catch (error) {
-    console.error('Error fetching workspace users:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error fetching workspace users:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+app.get("/api/workspaces/name/:workspaceName/users", async (req, res) => {
+  try {
+    const { workspaceName } = req.params;
+
+    const workspace = await Workspace.findOne({ name: workspaceName }).populate(
+      "members.userId",
+      "-password"
+    );
+
+    if (!workspace) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const users = workspace.members.map((member) => ({
+      _id: member.userId._id,
+      firstName: member.userId.firstName,
+      lastName: member.userId.lastName,
+      email: member.userId.email,
+      avatar: member.userId.avatar,
+      status: member.userId.status,
+      role: member.role,
+    }));
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error fetching workspace users:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
 // Assign PR or issue to a user
-app.patch('/api/projects/:projectId/:type/:itemId/assign', async (req, res) => {
+app.patch("/api/projects/:projectId/:type/:itemId/assign", async (req, res) => {
   try {
     const { projectId, type, itemId } = req.params;
     const { userId } = req.body;
-    
+
     const project = await Project.findById(projectId);
-    
+
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ message: "Project not found" });
     }
-    
-    if (type === 'pullrequest') {
+
+    if (type === "pullrequest") {
       const pr = project.pullRequests.id(itemId);
       if (!pr) {
-        return res.status(404).json({ message: 'Pull request not found' });
+        return res.status(404).json({ message: "Pull request not found" });
       }
       pr.assignee = userId;
-    } else if (type === 'issue') {
+    } else if (type === "issue") {
       const issue = project.issues.id(itemId);
       if (!issue) {
-        return res.status(404).json({ message: 'Issue not found' });
+        return res.status(404).json({ message: "Issue not found" });
       }
       issue.assignee = userId;
     } else {
-      return res.status(400).json({ message: 'Invalid type. Must be pullrequest or issue' });
+      return res
+        .status(400)
+        .json({ message: "Invalid type. Must be pullrequest or issue" });
     }
-    
+
     await project.save();
-    
+
     res.json(project);
   } catch (error) {
-    console.error('Error assigning item:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error assigning item:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-app.get('/api/messages/:userEmail', async (req, res) => {
+app.get("/api/messages/:userEmail", async (req, res) => {
   try {
     const { userEmail } = req.params;
     const { with: withEmail, limit = 50, page = 1 } = req.query;
@@ -1232,8 +1325,8 @@ app.get('/api/messages/:userEmail', async (req, res) => {
 
     res.json(messages);
   } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.status(500).json({ message: 'Error fetching messages' });
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ message: "Error fetching messages" });
   }
 });
 
@@ -1304,9 +1397,9 @@ app.put("/api/tasks/:taskId/description", async (req, res) => {
 // Add a checklist item
 app.post("/api/tasks/:taskId/checklist", async (req, res) => {
   try {
-    const { title , user } = req.body;
+    const { title, user } = req.body;
     const task = await Task.findById(req.params.taskId);
-    const userId = await User.findOne({email: user});
+    const userId = await User.findOne({ email: user });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -1439,9 +1532,9 @@ app.put("/api/tasks/:taskId/deadline", async (req, res) => {
 // Add a comment
 app.post("/api/tasks/:taskId/comments", async (req, res) => {
   try {
-    const { text,user } = req.body;
+    const { text, user } = req.body;
     const task = await Task.findById(req.params.taskId);
-    const userId = await User.findOne({email: user});
+    const userId = await User.findOne({ email: user });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -1463,7 +1556,8 @@ app.post("/api/tasks/:taskId/comments", async (req, res) => {
     });
 
     // Get the newly created comment
-    const createdComment = populatedTask.comments[populatedTask.comments.length - 1];
+    const createdComment =
+      populatedTask.comments[populatedTask.comments.length - 1];
 
     res.status(201).json(createdComment);
   } catch (error) {
@@ -1488,7 +1582,9 @@ app.delete("/api/tasks/:taskId/comments/:commentId", async (req, res) => {
     }
 
     if (comment.user.toString() !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Not authorized to delete this comment" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this comment" });
     }
 
     task.comments = task.comments.filter(
@@ -1504,29 +1600,33 @@ app.delete("/api/tasks/:taskId/comments/:commentId", async (req, res) => {
 });
 
 // Upload task attachment
-app.post("/api/tasks/:taskId/attachments", upload.single("attachment"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+app.post(
+  "/api/tasks/:taskId/attachments",
+  upload.single("attachment"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const task = await Task.findById(req.params.taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Create URL for the file
+      const fileUrl = `/uploads/${req.file.filename}`;
+
+      task.attachments.push(fileUrl);
+      await task.save();
+
+      res.json({ url: fileUrl });
+    } catch (error) {
+      console.error("Error uploading attachment:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    const task = await Task.findById(req.params.taskId);
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    // Create URL for the file
-    const fileUrl = `/uploads/${req.file.filename}`;
-    
-    task.attachments.push(fileUrl);
-    await task.save();
-
-    res.json({ url: fileUrl });
-  } catch (error) {
-    console.error("Error uploading attachment:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 // Delete task attachment
 app.delete("/api/tasks/:taskId/attachments", async (req, res) => {
@@ -1555,37 +1655,41 @@ app.delete("/api/tasks/:taskId/attachments", async (req, res) => {
 });
 
 // Upload cover photo
-app.post("/api/tasks/:taskId/cover", upload.single("cover"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-
-    const task = await Task.findById(req.params.taskId);
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    // Create URL for the file
-    const fileUrl = `/uploads/${req.file.filename}`;
-    
-    // Remove old cover photo file if it exists
-    if (task.coverPhoto && task.coverPhoto.startsWith("/uploads/")) {
-      const oldFilePath = path.join(__dirname, "..", task.coverPhoto);
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
+app.post(
+  "/api/tasks/:taskId/cover",
+  upload.single("cover"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
       }
+
+      const task = await Task.findById(req.params.taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Create URL for the file
+      const fileUrl = `/uploads/${req.file.filename}`;
+
+      // Remove old cover photo file if it exists
+      if (task.coverPhoto && task.coverPhoto.startsWith("/uploads/")) {
+        const oldFilePath = path.join(__dirname, "..", task.coverPhoto);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+
+      task.coverPhoto = fileUrl;
+      await task.save();
+
+      res.json({ url: fileUrl });
+    } catch (error) {
+      console.error("Error uploading cover photo:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    task.coverPhoto = fileUrl;
-    await task.save();
-
-    res.json({ url: fileUrl });
-  } catch (error) {
-    console.error("Error uploading cover photo:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 // Update cover (for color or URL)
 app.put("/api/tasks/:taskId/cover", async (req, res) => {
@@ -1599,8 +1703,8 @@ app.put("/api/tasks/:taskId/cover", async (req, res) => {
 
     // Remove old cover photo file if it exists and we're removing/changing the cover
     if (
-      task.coverPhoto && 
-      task.coverPhoto.startsWith("/uploads/") && 
+      task.coverPhoto &&
+      task.coverPhoto.startsWith("/uploads/") &&
       coverPhoto !== task.coverPhoto
     ) {
       const oldFilePath = path.join(__dirname, "..", task.coverPhoto);
@@ -1624,7 +1728,7 @@ app.put("/api/tasks/:taskId/move", async (req, res) => {
   try {
     const { taskListId } = req.body;
     const task = await Task.findById(req.params.taskId);
-    
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -1665,16 +1769,15 @@ app.put("/api/tasks/:taskId/move", async (req, res) => {
 app.delete("/api/tasks/:taskId", async (req, res) => {
   try {
     const task = await Task.findById(req.params.taskId);
-    
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
 
     // Remove task from its list
-    await TaskList.findByIdAndUpdate(
-      task.taskListId,
-      { $pull: { tasks: req.params.taskId } }
-    );
+    await TaskList.findByIdAndUpdate(task.taskListId, {
+      $pull: { tasks: req.params.taskId },
+    });
 
     // Delete the task
     await Task.findByIdAndDelete(req.params.taskId);
@@ -1690,7 +1793,7 @@ app.delete("/api/tasks/:taskId", async (req, res) => {
 app.put("/api/tasks/:taskId/members", async (req, res) => {
   try {
     const { userId, action } = req.body;
-    
+
     if (!["add", "remove"].includes(action)) {
       return res.status(400).json({ message: "Invalid action" });
     }
@@ -1709,14 +1812,18 @@ app.put("/api/tasks/:taskId/members", async (req, res) => {
     if (action === "add" && !task.assignedTo.includes(userId)) {
       task.assignedTo.push(userId);
     } else if (action === "remove") {
-      task.assignedTo = task.assignedTo.filter(id => id.toString() !== userId);
+      task.assignedTo = task.assignedTo.filter(
+        (id) => id.toString() !== userId
+      );
     }
 
     await task.save();
 
     // Return updated task with populated member info
-    const updatedTask = await Task.findById(req.params.taskId)
-      .populate("assignedTo", "firstName lastName avatar");
+    const updatedTask = await Task.findById(req.params.taskId).populate(
+      "assignedTo",
+      "firstName lastName avatar"
+    );
 
     res.json(updatedTask);
   } catch (error) {
@@ -1736,10 +1843,9 @@ app.get("/users/available", async (req, res) => {
   }
 });
 
-
-io.on('sendMessage', async (data) => {
+io.on("sendMessage", async (data) => {
   try {
-    const { content, receiverEmail, senderEmail, messageType = 'text' } = data;
+    const { content, receiverEmail, senderEmail, messageType = "text" } = data;
 
     const newMessage = new Message({
       content,
@@ -1753,13 +1859,12 @@ io.on('sendMessage', async (data) => {
     const savedMessage = await newMessage.save();
     const messageToSend = await Message.findById(savedMessage._id).lean();
 
-    socket.to(receiverEmail).emit('newMessage', messageToSend);
-    socket.emit('newMessage', messageToSend);
+    socket.to(receiverEmail).emit("newMessage", messageToSend);
+    socket.emit("newMessage", messageToSend);
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error("Error sending message:", error);
   }
 });
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
