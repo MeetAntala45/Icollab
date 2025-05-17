@@ -1,0 +1,62 @@
+{
+  "name": "saas",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@mui/material": "^6.3.1",
+    "auth": "^1.2.3",
+    "axios": "^1.8.2",
+    "cors": "^2.8.5",
+    "cra-template": "1.2.0",
+    "decode": "^0.3.0",
+    "express": "^4.21.2",
+    "firebase": "^11.4.0",
+    "fs": "^0.0.1-security",
+    "http": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.468.0",
+    "mongoose": "^8.9.3",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.16",
+    "path": "^0.12.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "react-loader-spinner": "^6.1.6",
+    "react-router-dom": "^7.1.1",
+    "react-scripts": "5.0.1",
+    "react-select": "^5.10.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "swiper": "^11.2.0",
+    "web-vitals": "^4.2.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "description": "This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).",
+  "main": "index.js",
+  "author": "",
+  "license": "ISC"
+}

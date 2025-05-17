@@ -1,0 +1,23 @@
+.sidebar-view {
+  margin-bottom: 20px;
+}
+
+.sidebar-view h3 {
+  margin: 10px 0;
+  color: #fff;
+}
+
+.sidebar-view ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar-view li {
+  padding: 5px 0;
+  cursor: pointer;
+  color: #d1d1d1;
+}
+
+.sidebar-view li:hover {
+  color: #61dafb;
+}

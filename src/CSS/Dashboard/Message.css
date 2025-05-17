@@ -1,0 +1,10 @@
+.message {
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  background-color: #f1f1f1;
+}
+
+.message strong {
+  color: #007bff;
+}
