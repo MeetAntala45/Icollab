@@ -428,7 +428,7 @@ app.post("/api/google-signup", async (req, res) => {
 
       const token = jwt.sign(
         { id: user._id, email: user.email },
-        process.env.JWT_SECRET || "yash1234",
+        process.env.JWT_SECRET || "meet4545",
         { expiresIn: "1h" }
       );
       return res.json({ token, user });
