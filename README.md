@@ -3,11 +3,6 @@
 **Icollab** is a full-featured MERN stack web application designed to streamline team communication, enhance productivity, and simplify project coordination. It provides a centralized platform for messaging, task management, and video conferencing, complete with AI-powered chat summarization.
 
 
-## 🖼️ Demo
-
-Try the live version here: [https://icollab-eta.vercel.app/](https://icollab-eta.vercel.app/)
-
-
 ## 🚀 Features
 
 - 🔐 Authentication using JWT + Google OAuth
