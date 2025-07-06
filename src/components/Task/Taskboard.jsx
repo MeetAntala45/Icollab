@@ -5,6 +5,7 @@ import TaskList from './TaskList';
 
 // You can import a spinner component from a library or use your custom spinner
 import { Circles } from 'react-loader-spinner'; // If using react-loader-spinner
+import Navbar from '../Homepage/Navbar';
 
 const Taskboard = () => {
   const [lists, setLists] = useState([]);
@@ -79,6 +80,7 @@ const Taskboard = () => {
   };
 
   const renderContent = () => {
+
     switch (activeSection) {
       case 'boards':
         return (
@@ -210,6 +212,7 @@ const Taskboard = () => {
       
       case 'settings':
         return (
+
           <div className="rd-section-content">
             <div className="rd-section-header">
               <h2>Settings</h2>
@@ -312,6 +315,8 @@ const Taskboard = () => {
   };
 
   return (
+    <>
+    <Navbar/>
     <div className="rd-dashboard">
       <div className="rd-sidebar">
         <div className="rd-sidebar-header">
@@ -373,6 +378,7 @@ const Taskboard = () => {
         {renderContent()}
       </div>
     </div>
+    </>
   );
 };
 

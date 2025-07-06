@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../../CSS/Dashboard/Workspace.css";
+import Navbar from "../Homepage/Navbar";
 
 const Workspace = () => {
   const [workspaces, setWorkspaces] = useState([]);
@@ -47,13 +48,10 @@ const Workspace = () => {
   }
 
   return (
+    <>
+    <Navbar/>
     <div className="workspace-container">
       <h1>Your Workspaces</h1>
-      <a href="/"><button class="back-button">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-    <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
-  </svg>
-</button></a>
       {workspaces.length > 0 ? (
         <div className="workspace-list">
           {workspaces.map((workspace) => (
@@ -86,6 +84,7 @@ const Workspace = () => {
         <Link to="/workspace/create" className="workspace-btn-link">Create Workspace</Link>
       </button>
     </div>
+    </>
   );
 };
 

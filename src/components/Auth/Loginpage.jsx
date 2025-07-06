@@ -28,7 +28,6 @@ const LoginPage = () => {
         localStorage.setItem("authToken", data.token);
         localStorage.setItem("email", user.email);
         navigate("/");
-        alert("Google login successful!");
       } else {
         alert(`Error: ${data.message}`);
       }
@@ -57,7 +56,6 @@ const LoginPage = () => {
         localStorage.setItem("authToken", data.token);
         localStorage.setItem("email", email);
         navigate("/");
-        alert("Login successful!");
       } else {
         console.error("Error:", data.message);
         alert(data.message);
@@ -72,9 +70,7 @@ const LoginPage = () => {
     <div className="auth-container">
       <div className="login-box">
         <div className="login-form">
-          <div className="logo">
-            <div className="logo-square"></div>
-          </div>
+          <br /><br />
 
           <h1>Log in to your Account</h1>
           <p className="welcome-text">Welcome back! Select method to log in:</p>

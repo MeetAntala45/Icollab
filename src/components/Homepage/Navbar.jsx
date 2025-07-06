@@ -67,26 +67,23 @@ const IcollabNavbar = () => {
             {isAuthenticated ? (
               <Link to="/workspace/create">Create Workspace</Link>
             ) : (
-              <Link to="/signup">Create Workspace</Link>
+              <Link to="/login">Create Workspace</Link>
             )}
           </button>
           {isAuthenticated ? (
+            <>
             <div className="icollab-user-menu">
               <button className="icollab-user-menu-btn">
-                <FaUserCircle className="icollab-avatar" />
-                <span>{truncateEmail(userName)}</span>
+                <FaUserCircle className="icollab-avatar" onClick={() => navigate("/profile")}/>
+                <span onClick={() => navigate("/profile")}>{truncateEmail(userName)}</span>
               </button>
-              <div className="icollab-user-dropdown">
-                <button onClick={() => navigate("/profile")}>
-                  <FiUser />
-                  <span>Profile</span>
-                </button>
-                <button onClick={handleLogout}>
-                  <FiLogOut />
-                  <span>Log out</span>
-                </button>
-              </div>
             </div>
+            <div onClick={handleLogout}>
+              <Link to="/" className="icollab-login-btn">
+                <FiLogOut />Log out
+              </Link>
+            </div>
+            </>
           ) : (
             <div className="icollab-auth-buttons">
               <Link to="/login" className="icollab-login-btn">

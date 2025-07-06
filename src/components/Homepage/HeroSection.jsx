@@ -8,7 +8,7 @@ const HeroSection = () => {
   const collaborationFeatures = [
     { name: "Real-time Chat", color: "#6264A7", icon: "💬" },
     { name: "Task Board", color: "#2EB67D", icon: "📋" },
-    { name: "File Sharing", color: "#E01E5A", icon: "📁" },
+    { name: "Manage", color: "#E01E5A", icon: "📁" },
     { name: "Video Calls", color: "#ECB22E", icon: "🎥" }
   ];
 

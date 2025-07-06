@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Users, Tag, CheckSquare, Calendar, Paperclip, Image, Move, Copy, Archive, Share, X, ChevronDown, Edit, Send, Trash2 } from 'lucide-react';
 import axios from "axios";
 import "../../CSS/Task/tasks.css";
+import Navbar from "../Homepage/Navbar";
 
 const Task = ({ taskId, title, description, taskListId, onArchive, onMove, fetchTasks }) => {
     const [isExpanded, setIsExpanded] = useState(false);

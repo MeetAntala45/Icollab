@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../../CSS/Auth/profile.css";
+import Navbar from "../Homepage/Navbar";
 
 const Profile = () => {
   const [userDetails, setUserDetails] = useState(null);
@@ -18,7 +19,9 @@ const Profile = () => {
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/profile?email=${userEmail}`);
+        const response = await fetch(
+          `http://localhost:5000/api/profile?email=${userEmail}`
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch profile data");
         }
@@ -36,46 +39,103 @@ const Profile = () => {
   }, [userEmail]);
 
   if (loading) {
-    return <div className="profile-container">Loading...</div>;
+    return (
+      <div className="profile-container">
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <div className="loading-text">Loading your profile...</div>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="profile-container error">{error}</div>;
+    return (
+      <div className="profile-container">
+        <div className="error-state">
+          <div className="error-content">
+            <div className="error-icon">!</div>
+            <div className="error-message">Oops! Something went wrong</div>
+            <div className="error-description">{error}</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
+    <>
+    <Navbar/>
     <div className="profile-container">
-      <h1>User Profile</h1>
+      <div className="profile-header">
+        <h1 className="profile-title">{userDetails.firstName} {userDetails.lastName}</h1>
+        <p className="profile-subtitle">
+          Manage your account and workspace information
+        </p>
+      </div>
 
-      {userDetails ? (
-        <div className="user-details">
-          <h2>Personal Information</h2>
-          <p><strong>Name:</strong> {userDetails.firstName} { userDetails.lastName}</p>
-          <p><strong>Email:</strong> {userDetails.email}</p>
-          <p><strong>Role:</strong> {userDetails.role || "Not specified"}</p>
-          <p><strong>Phone:</strong> {userDetails.phone || "Not specified"}</p>
-        </div>
-      ) : (
-        <p>User details not found.</p>
-      )}
+      <div className="profile-wrapper">
+        <div className="profile-card">
+          <div className="card-header">
+            <div className="card-icon"></div>
+            <h2 className="card-title">Personal Information</h2>
+          </div>
 
-      <h2 style={{ color: "#2563eb", fontSize: "1.8rem", marginBottom: "20px" }}>
-        Workspaces Created by You
-      </h2>
-
-      {workspaces.length > 0 ? (
-        <div className="workspace-list">
-          {workspaces.map((workspace) => (
-            <div className="workspace-card" key={workspace._id}>
-              <center><h3>{workspace.name}</h3>
-              <p> {workspace.description}</p></center>
+          {userDetails ? (
+            <div className="user-info">
+              <div className="info-row">
+                <span className="info-label">Name:</span>
+                <span className="info-value">
+                  {userDetails.firstName} {userDetails.lastName}
+                </span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Email:</span>
+                <span className="info-value">{userDetails.email}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Role:</span>
+                <span className="info-value">
+                  {userDetails.role || "Not specified"}
+                </span>
+              </div>
+              
             </div>
-          ))}
+          ) : (
+            <div className="no-user-details">
+              <p>User details not found.</p>
+            </div>
+          )}
         </div>
-      ) : (
-        <p>You have not created any workspaces yet.</p>
-      )}
+
+        <div className="workspaces-section">
+          <div className="profile-card">
+            <div className="card-header">
+              <div className="card-icon"></div>
+              <h2 className="card-title">Your Workspaces</h2>
+            </div>
+
+            {workspaces.length > 0 ? (
+              <div className="workspace-grid">
+                {workspaces.map((workspace, index) => (
+                  <div key={index} className="workspace-card">
+                    <h3 className="workspace-name">{workspace.name}</h3>
+                    <p className="workspace-description">
+                      {workspace.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-workspaces">
+                <p>You have not created any workspaces yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
+    </>
   );
 };
 
