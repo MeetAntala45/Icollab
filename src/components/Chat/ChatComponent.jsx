@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import io from 'socket.io-client';
+import React, { useState, useEffect, useRef } from "react";
+import io from "socket.io-client";
 
 const ChatComponent = ({ currentUser, selectedUser }) => {
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -11,19 +11,21 @@ const ChatComponent = ({ currentUser, selectedUser }) => {
 
   useEffect(() => {
     if (!socketRef.current) {
-      socketRef.current = io('http://localhost:5001');
-      socketRef.current.emit('register', currentUser.email);
+      socketRef.current = io("http://localhost:5001");
+      socketRef.current.emit("register", currentUser.email);
     }
 
     const handleNewMessage = (message) => {
-      setMessages(prev => {
+      setMessages((prev) => {
         // Only add message if it's from the selected conversation
         if (
-          (message.sender === currentUser.email && message.receiver === selectedUser.email) ||
-          (message.sender === selectedUser.email && message.receiver === currentUser.email)
+          (message.sender === currentUser.email &&
+            message.receiver === selectedUser.email) ||
+          (message.sender === selectedUser.email &&
+            message.receiver === currentUser.email)
         ) {
           // Check if message already exists
-          const exists = prev.some(m => m._id === message._id);
+          const exists = prev.some((m) => m._id === message._id);
           if (exists) return prev;
           return [...prev, message];
         }
@@ -31,11 +33,11 @@ const ChatComponent = ({ currentUser, selectedUser }) => {
       });
     };
 
-    socketRef.current.on('newMessage', handleNewMessage);
+    socketRef.current.on("newMessage", handleNewMessage);
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.off('newMessage', handleNewMessage);
+        socketRef.current.off("newMessage", handleNewMessage);
       }
     };
   }, [currentUser.email, selectedUser.email]);
@@ -45,19 +47,19 @@ const ChatComponent = ({ currentUser, selectedUser }) => {
     const fetchMessages = async () => {
       if (!selectedUser) return;
       setLoading(true);
-      
+
       try {
         const response = await fetch(
           `http://localhost:5000/api/messages/${currentUser.email}?with=${selectedUser.email}&limit=50`
         );
 
         if (!response.ok) {
-          throw new Error('Failed to fetch messages');
+          throw new Error("Failed to fetch messages");
         }
         const data = await response.json();
         setMessages(data);
       } catch (error) {
-        console.error('Error fetching messages:', error);
+        console.error("Error fetching messages:", error);
       } finally {
         setLoading(false);
       }
@@ -67,7 +69,7 @@ const ChatComponent = ({ currentUser, selectedUser }) => {
 
   useEffect(() => {
     if (!loading) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, loading]);
   const handleSend = async (e) => {
@@ -76,14 +78,14 @@ const ChatComponent = ({ currentUser, selectedUser }) => {
 
     const messageContent = newMessage.trim();
 
-    socketRef.current.emit('sendMessage', {
+    socketRef.current.emit("sendMessage", {
       content: messageContent,
       receiverEmail: selectedUser.email,
       senderEmail: currentUser.email,
-      messageType: 'text'
+      messageType: "text",
     });
 
-    setNewMessage('');
+    setNewMessage("");
   };
 
   return (
@@ -101,15 +103,15 @@ const ChatComponent = ({ currentUser, selectedUser }) => {
               <div
                 key={message._id || index}
                 className={`message ${
-                  message.sender === currentUser.email ? 'sent' : 'received'
+                  message.sender === currentUser.email ? "sent" : "received"
                 }`}
               >
                 <div className="message-bubble">
                   <div className="message-content">{message.content}</div>
                   <div className="message-time">
                     {new Date(message.createdAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit'
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </div>
                 </div>
@@ -127,7 +129,9 @@ const ChatComponent = ({ currentUser, selectedUser }) => {
           placeholder="Type a message..."
           className="message-input"
         />
-        <button type="submit" className="send-button">Send</button>
+        <button type="submit" className="send-button">
+          Send
+        </button>
       </form>
     </div>
   );

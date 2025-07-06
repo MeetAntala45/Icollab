@@ -1,35 +1,29 @@
 .icollab-navbar {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  padding: 0.5rem 1rem;
+  background-color: #ffffffcc; /* translucent white */
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
 }
 
-.icollab-navbar .icollab-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.icollab-container {
   max-width: 1200px;
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .icollab-logo-link {
   text-decoration: none;
-  color: #333;
-}
-
-.icollab-logo-text {
-  font-size: 1.75rem;
-  font-weight: 400;
-  letter-spacing: 0.05em;
-}
-
-.icollab-nav-links {
-  display: flex;
-  align-items: center;
+  color: #111;
+  font-weight: 700;
+  font-size: 1.8rem;
+  letter-spacing: 0.03em;
 }
 
 .icollab-nav-links ul {
@@ -40,79 +34,75 @@
   padding: 0;
 }
 
-.icollab-nav-links ul a {
-  color: #333;
+.icollab-nav-links a {
   text-decoration: none;
+  color: #333;
+  font-weight: 500;
   font-size: 1rem;
-  font-weight: 400;
   transition: color 0.3s ease;
 }
 
-.icollab-nav-links ul a:hover {
+.icollab-nav-links a:hover {
   color: #4a154b;
 }
 
 .icollab-action-buttons {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .icollab-search-bar {
   position: relative;
-  width: 250px;
+  width: 220px;
 }
 
 .icollab-search-bar input {
-  width: 90%;
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 20px;
+  width: 100%;
+  padding: 0.45rem 2.5rem 0.45rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 30px;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
+  transition: border 0.3s ease;
 }
 
 .icollab-search-bar input:focus {
+  border-color: #4a154b;
   outline: none;
-  border-color: #333;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 2px rgba(74, 21, 75, 0.1);
 }
 
 .icollab-search-icon {
   position: absolute;
-  right: 0.75rem;
   top: 50%;
+  right: 0.9rem;
   transform: translateY(-50%);
-  color: #777;
+  color: #888;
   pointer-events: none;
 }
 
 .icollab-workspace-btn {
-  background-color: #fff;
-  color: #3a3a3a;
-  border: 1px solid #ccc;
-  border-radius: 30px;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  height: 33px;
   display: flex;
-  margin-left: 5px;
   align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 25px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  gap: 0.4rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .icollab-workspace-btn:hover {
-  background-color: #f0f0f0;
-  color: #313131;
-  border-color: #393939;
+  background-color: #f9f9f9;
+  border-color: #888;
 }
 
 .icollab-workspace-btn a {
   text-decoration: none;
-  color: black;
+  color: inherit;
 }
 
 .icollab-user-menu {
@@ -122,28 +112,30 @@
 .icollab-user-menu-btn {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 20px;
 }
 
 .icollab-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  margin-right: 0.5rem;
+  font-size: 1.4rem;
+  color: #4a154b;
 }
 
 .icollab-user-dropdown {
   position: absolute;
-  top: 100%;
+  top: 110%;
   right: 0;
   background-color: white;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 180px;
   display: none;
+  overflow: hidden;
 }
 
 .icollab-user-menu:hover .icollab-user-dropdown {
@@ -151,26 +143,25 @@
 }
 
 .icollab-user-dropdown button {
+  background: none;
+  border: none;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  text-align: left;
   display: flex;
   align-items: center;
-  width: 100%;
-  padding: 0.5rem 1rem;
-  border: none;
-  background: none;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  color: #333;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background 0.3s ease;
 }
 
 .icollab-user-dropdown button:hover {
-  background-color: #f5f5f5;
-}
-
-.icollab-user-dropdown button svg {
-  margin-right: 0.5rem;
+  background-color: #f4f4f4;
 }
 
 .icollab-auth-buttons {
-  width: 200px;
   display: flex;
   gap: 0.5rem;
 }
@@ -178,18 +169,19 @@
 .icollab-login-btn,
 .icollab-signup-btn {
   padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-weight: 500;
-  align-items: center;
+  border-radius: 25px;
+  font-size: 0.9rem;
   text-decoration: none;
+  font-weight: 500;
   transition: all 0.3s ease;
+  display: inline-block;
+  text-align: center;
 }
 
 .icollab-login-btn {
-  background-color: transparent;
-  color: #4a154b;
+  background: transparent;
   border: 1px solid #4a154b;
+  color: #4a154b;
 }
 
 .icollab-login-btn:hover {
@@ -198,7 +190,7 @@
 
 .icollab-signup-btn {
   background-color: #4a154b;
-  color: white;
+  color: #fff;
   border: none;
 }
 
@@ -206,16 +198,11 @@
   background-color: #611f69;
 }
 
-@media (max-width: 1024px) {
-  .icollab-navbar .icollab-container {
-    flex-wrap: wrap;
-    justify-content: center;
+@media (max-width: 992px) {
+  .icollab-container {
+    flex-direction: column;
+    align-items: stretch;
     gap: 1rem;
-  }
-
-  .icollab-nav-links {
-    order: 3;
-    width: 100%;
   }
 
   .icollab-nav-links ul {
@@ -223,31 +210,11 @@
   }
 
   .icollab-action-buttons {
-    order: 2;
-  }
-}
-
-@media (max-width: 768px) {
-  .icollab-action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .icollab-search-bar {
-    width: 100%;
-  }
-
-  .icollab-workspace-btn,
-  .icollab-user-menu,
-  .icollab-auth-buttons {
-    width: 100%;
-  }
-
-  .icollab-user-menu-btn,
-  .icollab-login-btn,
-  .icollab-signup-btn {
     justify-content: center;
-    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .icollab-auth-buttons {
+    justify-content: center;
   }
 }
-

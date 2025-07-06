@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../CSS/Homepage/navbar.css";
 import logo from "../../Images/logo.png";
-import { FaUserCircle } from 'react-icons/fa';
-import { FiPlusCircle, FiSearch, FiUser, FiLogOut } from 'react-icons/fi';
+import { FaUserCircle } from "react-icons/fa";
+import { FiPlusCircle, FiSearch, FiUser, FiLogOut } from "react-icons/fi";
 
 const IcollabNavbar = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -41,9 +41,21 @@ const IcollabNavbar = () => {
         </Link>
         <nav className="icollab-nav-links">
           <ul>
-            <li><Link to="/dashboard">Workspaces</Link></li>
-            <li><Link to="/task">Taskboard</Link></li>
-            <li><Link to="/about">About</Link></li>
+            {isAuthenticated && (
+              <li>
+                <Link to="/dashboard">Workspaces</Link>
+              </li>
+            )}
+            {isAuthenticated && (
+              <li>
+                <Link to="/task">Taskboard</Link>
+              </li>
+            )}
+            {isAuthenticated && (
+              <li>
+                <Link to="/about">About</Link>
+              </li>
+            )}
           </ul>
         </nav>
         <div className="icollab-action-buttons">
@@ -52,7 +64,11 @@ const IcollabNavbar = () => {
           </div>
           <button className="icollab-workspace-btn" title="Create Workspace">
             <FiPlusCircle />
-            <Link to="/workspace/create">Create Workspace</Link>
+            {isAuthenticated ? (
+              <Link to="/workspace/create">Create Workspace</Link>
+            ) : (
+              <Link to="/signup">Create Workspace</Link>
+            )}
           </button>
           {isAuthenticated ? (
             <div className="icollab-user-menu">
@@ -73,8 +89,12 @@ const IcollabNavbar = () => {
             </div>
           ) : (
             <div className="icollab-auth-buttons">
-              <Link to="/login" className="icollab-login-btn">Sign In</Link>
-              <Link to="/signup" className="icollab-signup-btn">Sign Up</Link>
+              <Link to="/login" className="icollab-login-btn">
+                Sign In
+              </Link>
+              <Link to="/signup" className="icollab-signup-btn">
+                Sign Up
+              </Link>
             </div>
           )}
         </div>
